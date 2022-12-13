@@ -46,6 +46,7 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
+    "node-fetch": "^3.3.0",
     "supernote-cloud-api": "^1.0.8"
   }
 }
