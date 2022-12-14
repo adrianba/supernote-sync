@@ -2,6 +2,7 @@ import * as supernote from "supernote-cloud-api";
 import path from "node:path";
 import fs from "node:fs/promises";
 import fetch from "node-fetch";
+import md5 from "js-md5";
 
 export async function syncFiles(token: string, localPath: string) {
   return syncSupernoteDirectory(token, localPath);
@@ -42,7 +43,9 @@ async function syncSupernoteFile(token: string, localPath: string, item: superno
       return;
     }
     // Compute md5 of localPath
+    console.log(`  Cloud MD5: ${item.md5}`);
     let localMd5 = await computeFileMd5(localPath);
+    console.log(`  Local MD5: ${localMd5}`);
     if (localMd5 == item.md5) {
       console.log(`  Ignoring file (MD5 matches): ${localPath}`);
       return;
@@ -55,9 +58,23 @@ async function syncSupernoteFile(token: string, localPath: string, item: superno
   await downloadFile(url, localPath, item.updateTime);
 }
 
-async function computeFileMd5(localPath: string) {
-  // Compute md5 of file
-  return "";
+// Compute md5 of file
+async function computeFileMd5(filePath: string) {
+  let hash = md5.create();
+
+  const fd = await fs.open(filePath, "r");
+  try {
+    let done = false;
+    while (!done) {
+      let data = await fd.read();
+      done = !data || data.bytesRead === 0;
+      if (!done) hash.update(data.buffer.subarray(0, data.bytesRead));
+    }
+  } finally {
+    await fd.close();
+  }
+
+  return hash.hex();
 }
 
 async function downloadFile(url: string, filePath: string, updateTime: number) {
@@ -91,3 +108,7 @@ async function downloadFile(url: string, filePath: string, updateTime: number) {
   console.log(`  Update time: ${update}`);
   await fs.utimes(filePath, update, update);
 }
+
+export default {
+  syncFiles
+};
